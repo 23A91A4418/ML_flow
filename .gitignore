@@ -1,0 +1,9 @@
+# MLflow tracking DB + artifacts (generated files)
+experiments/
+
+# Environment variables (secrets)
+.env
+
+# Python cache (auto-generated)
+__pycache__/
+*.pyc
