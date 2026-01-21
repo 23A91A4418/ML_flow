@@ -1,0 +1,56 @@
+services:
+  mlflow_server:
+    image: ghcr.io/mlflow/mlflow:v2.9.2
+    container_name: mlflow_server
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./experiments:/mlflow
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --default-artifact-root /mlflow/artifacts
+      --serve-artifacts
+    networks:
+      - mlflow_net
+
+  trainer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trainer
+    depends_on:
+      - mlflow_server
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow_server:5000
+    volumes:
+      - ./experiments:/mlflow
+    command: ["python", "-m", "src.model_trainer"]
+    networks:
+      - mlflow_net
+
+  model_api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: model_api
+    depends_on:
+      - mlflow_server
+      - trainer
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow_server:5000
+      - REGISTERED_MODEL_NAME=ClassificationModel
+    volumes:
+      - ./experiments:/mlflow
+    ports:
+      - "8000:8000"
+    command: ["python", "-m", "src.inference_api"]
+    restart: always
+    networks:
+      - mlflow_net
+
+networks:
+  mlflow_net:
+    driver: bridge
